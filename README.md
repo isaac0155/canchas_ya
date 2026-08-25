@@ -115,7 +115,3 @@ Backend:  http://localhost:3001
 - Recordatorios
 - Integracion con WhatsApp
 - Apoyo con Gemini para interpretar mensajes
-
-## Nota
-
-El archivo `backend/.env` no se sube al repositorio porque contiene configuraciones privadas.
