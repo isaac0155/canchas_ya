@@ -5,3 +5,4 @@ dist/
 .wwebjs_cache/
 npm-debug.log*
 *.log
+CONTEXTO_PROYECTO.md
