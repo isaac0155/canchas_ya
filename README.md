@@ -9,6 +9,7 @@ El cliente solicita reservas por WhatsApp y el administrador gestiona todo desde
 - Frontend: React, TypeScript, HTML5, CSS3
 - Backend: Node.js, Express
 - Base de datos: MySQL
+- ORM: TypeORM
 - Comunicacion: API REST con JSON
 
 ## Estructura
@@ -62,6 +63,7 @@ Ejecutar los scripts SQL en MySQL:
 database/schema.sql
 database/seed.sql
 database/schedule.sql
+database/reservation_tracking.sql
 ```
 
 ## Instalar dependencias
@@ -110,6 +112,8 @@ Backend:  http://localhost:3001
 - Gestion de canchas
 - Gestion de tipos de cancha
 - Gestion de reservas
+- Cancelacion de reservas con motivo
+- Metricas de asistencia y pago
 - Horarios de atencion
 - Fechas bloqueadas
 - Recordatorios

@@ -54,11 +54,15 @@ CREATE TABLE IF NOT EXISTS reserva (
   estado VARCHAR(20) NOT NULL DEFAULT 'pendiente',
   origen VARCHAR(20) NOT NULL DEFAULT 'whatsapp',
   recordatorio_enviado BOOLEAN NOT NULL DEFAULT FALSE,
+  cancelacion_motivo VARCHAR(200),
+  resultado VARCHAR(20) NOT NULL DEFAULT 'sin_marcar',
+  fecha_resultado DATETIME,
   fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (cliente_id) REFERENCES cliente(id),
   FOREIGN KEY (cancha_id) REFERENCES cancha(id),
   UNIQUE (cancha_id, fecha_reserva, hora_inicio),
   CHECK (hora_fin > hora_inicio),
   CHECK (estado IN ('pendiente', 'confirmada', 'cancelada', 'finalizada')),
+  CHECK (resultado IN ('sin_marcar', 'asistio_pago', 'no_llego')),
   CHECK (origen IN ('whatsapp', 'admin'))
 );

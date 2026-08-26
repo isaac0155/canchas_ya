@@ -40,8 +40,19 @@ type Reserva = {
   estado: string;
   origen: string;
   recordatorio_enviado: number;
+  cancelacion_motivo: string | null;
+  resultado: string;
   cliente: string;
   cancha: string;
+};
+
+type MetricasReserva = {
+  total: number;
+  confirmadas: number;
+  canceladas: number;
+  finalizadas: number;
+  asistieronYPagaron: number;
+  noLlegaron: number;
 };
 
 type Recordatorio = {
@@ -76,6 +87,7 @@ type DatosPanel = {
   recordatorios: Recordatorio[];
   horarios: HorarioAtencion[];
   fechasBloqueadas: FechaBloqueada[];
+  metricasReserva: MetricasReserva;
 };
 
 type Vista = 'dashboard' | 'reservas' | 'canchas' | 'clientes' | 'horarios' | 'recordatorios' | 'whatsapp';
@@ -87,7 +99,15 @@ const datosVacios: DatosPanel = {
   reservas: [],
   recordatorios: [],
   horarios: [],
-  fechasBloqueadas: []
+  fechasBloqueadas: [],
+  metricasReserva: {
+    total: 0,
+    confirmadas: 0,
+    canceladas: 0,
+    finalizadas: 0,
+    asistieronYPagaron: 0,
+    noLlegaron: 0
+  }
 };
 
 function App() {
@@ -206,13 +226,14 @@ function App() {
   }
 
   async function cargarPanel() {
-    const [tiposCancha, canchas, clientes, reservas, recordatorios, horariosConfig] = await Promise.all([
+    const [tiposCancha, canchas, clientes, reservas, recordatorios, horariosConfig, metricasReserva] = await Promise.all([
       pedirDatos<TipoCancha[]>('/tipos-cancha'),
       pedirDatos<Cancha[]>('/canchas'),
       pedirDatos<Cliente[]>('/clientes'),
       pedirDatos<Reserva[]>('/reservas'),
       pedirDatos<Recordatorio[]>('/recordatorios/pendientes'),
-      pedirDatos<{ horarios: HorarioAtencion[]; fechasBloqueadas: FechaBloqueada[] }>('/horarios')
+      pedirDatos<{ horarios: HorarioAtencion[]; fechasBloqueadas: FechaBloqueada[] }>('/horarios'),
+      pedirDatos<MetricasReserva>('/reservas/metricas/resumen')
     ]);
 
     setDatos({
@@ -222,7 +243,8 @@ function App() {
       reservas,
       recordatorios,
       horarios: horariosConfig.horarios,
-      fechasBloqueadas: horariosConfig.fechasBloqueadas
+      fechasBloqueadas: horariosConfig.fechasBloqueadas,
+      metricasReserva
     });
     setUltimaActualizacion(new Date().toLocaleTimeString());
     await cargarEstadoWhatsapp();
@@ -336,7 +358,21 @@ function App() {
   }
 
   async function cancelarReserva(id: number) {
-    await ejecutarAccion(() => enviarDatos(`/reservas/${id}`, 'DELETE'));
+    const motivo = window.prompt('Motivo de cancelacion para avisar al cliente');
+
+    if (!motivo) {
+      return;
+    }
+
+    await ejecutarAccion(() => enviarDatos(`/reservas/${id}`, 'DELETE', { motivo }));
+  }
+
+  async function marcarAsistioYPago(id: number) {
+    await ejecutarAccion(() => enviarDatos(`/reservas/${id}/asistio-pago`, 'PATCH'));
+  }
+
+  async function marcarNoLlego(id: number) {
+    await ejecutarAccion(() => enviarDatos(`/reservas/${id}/no-llego`, 'PATCH'));
   }
 
   async function cambiarEstadoReserva(reserva: Reserva, estado: string) {
@@ -510,6 +546,8 @@ function App() {
                 <Metric label="Pendientes" value={reservasPendientes} trend="Por revisar" danger />
                 <Metric label="Canchas" value={datos.canchas.length} trend={`${canchasEnMantenimiento} en mantenimiento`} />
                 <Metric label="Recordatorios" value={datos.recordatorios.length} trend="Listos para enviar" />
+                <Metric label="Llegaron y pagaron" value={datos.metricasReserva.asistieronYPagaron} trend="Reservas cumplidas" />
+                <Metric label="No llegaron" value={datos.metricasReserva.noLlegaron} trend="Reservas ausentes" danger />
               </section>
 
               <section className="chart-panel">
@@ -562,6 +600,8 @@ function App() {
               crearReserva={crearReserva}
               cancelarReserva={cancelarReserva}
               cambiarEstadoReserva={cambiarEstadoReserva}
+              marcarAsistioYPago={marcarAsistioYPago}
+              marcarNoLlego={marcarNoLlego}
             />
             <ClientesRapidos
               clientes={datos.clientes}
@@ -812,6 +852,8 @@ function ReservasPanel(props: {
   crearReserva: (evento: FormEvent<HTMLFormElement>) => void;
   cancelarReserva: (id: number) => void;
   cambiarEstadoReserva: (reserva: Reserva, estado: string) => void;
+  marcarAsistioYPago: (id: number) => void;
+  marcarNoLlego: (id: number) => void;
 }) {
   return (
     <section className="work-panel wide" id="reservas">
@@ -842,13 +884,14 @@ function ReservasPanel(props: {
             <th>Cliente</th>
             <th>Cancha</th>
             <th>Estado</th>
+            <th>Resultado</th>
             <th>Accion</th>
           </tr>
         </thead>
         <tbody>
           {props.datos.reservas.length === 0 && (
             <tr>
-              <td colSpan={6} className="empty-cell">No hay reservas registradas.</td>
+              <td colSpan={7} className="empty-cell">No hay reservas registradas.</td>
             </tr>
           )}
 
@@ -860,6 +903,12 @@ function ReservasPanel(props: {
               <td>{reserva.cancha}</td>
               <td><Status estado={reserva.estado} /></td>
               <td>
+                <Status estado={reserva.resultado || 'sin_marcar'} />
+                {reserva.cancelacion_motivo && (
+                  <small className="reason-text">{reserva.cancelacion_motivo}</small>
+                )}
+              </td>
+              <td>
                 <div className="table-actions">
                   {reserva.estado === 'pendiente' && (
                     <button className="table-button" onClick={() => props.cambiarEstadoReserva(reserva, 'confirmada')}>
@@ -869,6 +918,16 @@ function ReservasPanel(props: {
                   {reserva.estado === 'confirmada' && (
                     <button className="table-button" onClick={() => props.cambiarEstadoReserva(reserva, 'finalizada')}>
                       Finalizar
+                    </button>
+                  )}
+                  {reserva.estado === 'confirmada' && reserva.resultado !== 'asistio_pago' && (
+                    <button className="table-button" onClick={() => props.marcarAsistioYPago(reserva.id)}>
+                      Llego y pago
+                    </button>
+                  )}
+                  {reserva.estado === 'confirmada' && reserva.resultado !== 'no_llego' && (
+                    <button className="table-button" onClick={() => props.marcarNoLlego(reserva.id)}>
+                      No llego
                     </button>
                   )}
                   {!['cancelada', 'finalizada'].includes(reserva.estado) && (

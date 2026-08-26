@@ -1,4 +1,5 @@
 const reservaRepository = require('../repositories/reserva.repository');
+const reservaMetricasRepository = require('../repositories/reservaMetricas.repository');
 const clienteRepository = require('../repositories/cliente.repository');
 const canchaRepository = require('../repositories/cancha.repository');
 const horarioService = require('./horario.service');
@@ -9,6 +10,10 @@ async function listarReservas(filtros) {
 
 async function obtenerReservaPorId(id) {
   return reservaRepository.obtenerPorId(id);
+}
+
+async function obtenerMetricas() {
+  return reservaMetricasRepository.obtenerMetricas();
 }
 
 async function crearReserva(datos) {
@@ -42,15 +47,39 @@ async function actualizarReserva(id, datos) {
   return reservaRepository.obtenerPorId(id);
 }
 
-async function cancelarReserva(id) {
+async function cancelarReserva(id, motivo) {
   const reservaActual = await reservaRepository.obtenerPorId(id);
 
   if (!reservaActual) {
     return null;
   }
 
-  await reservaRepository.cambiarEstado(id, 'cancelada');
-  return true;
+  const motivoPreparado = prepararMotivoCancelacion(motivo);
+  await reservaRepository.cancelar(id, motivoPreparado);
+  return reservaRepository.obtenerPorId(id);
+}
+
+async function marcarAsistioYPago(id) {
+  return marcarResultado(id, 'asistio_pago');
+}
+
+async function marcarNoLlego(id) {
+  return marcarResultado(id, 'no_llego');
+}
+
+async function marcarResultado(id, resultado) {
+  const reservaActual = await reservaRepository.obtenerPorId(id);
+
+  if (!reservaActual) {
+    return null;
+  }
+
+  if (reservaActual.estado === 'cancelada') {
+    throw new Error('No se puede marcar asistencia en una reserva cancelada');
+  }
+
+  await reservaRepository.marcarResultado(id, resultado);
+  return reservaRepository.obtenerPorId(id);
 }
 
 async function prepararDatosReserva(datos) {
@@ -105,8 +134,21 @@ async function prepararDatosReserva(datos) {
     hora_fin: horaFin,
     estado,
     origen,
-    recordatorio_enviado: Boolean(datos.recordatorio_enviado)
+    recordatorio_enviado: Boolean(datos.recordatorio_enviado),
+    resultado: datos.resultado || 'sin_marcar'
   };
+}
+
+function prepararMotivoCancelacion(motivo) {
+  if (!motivo || motivo.trim() === '') {
+    throw new Error('El motivo de cancelacion es obligatorio');
+  }
+
+  if (motivo.trim().length > 200) {
+    throw new Error('El motivo de cancelacion no debe pasar de 200 caracteres');
+  }
+
+  return motivo.trim();
 }
 
 async function validarDisponibilidad(reservaId, reserva) {
@@ -158,8 +200,11 @@ function validarBloqueDeMediaHora(hora) {
 module.exports = {
   listarReservas,
   obtenerReservaPorId,
+  obtenerMetricas,
   crearReserva,
   validarReservaSinCrear,
   actualizarReserva,
-  cancelarReserva
+  cancelarReserva,
+  marcarAsistioYPago,
+  marcarNoLlego
 };

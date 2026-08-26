@@ -502,6 +502,17 @@ th {
 .status-confirmada { background: #18b978; }
 .status-cancelada { background: #ef4444; }
 .status-finalizada { background: #64748b; }
+.status-sin_marcar { background: #94a3b8; }
+.status-asistio_pago { background: #0f9f6e; }
+.status-no_llego { background: #dc2626; }
+
+.reason-text {
+  display: block;
+  max-width: 180px;
+  margin-top: 6px;
+  color: #7b8797;
+  font-size: 12px;
+}
 
 .stack-list {
   display: grid;

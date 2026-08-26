@@ -1,4 +1,5 @@
 const reservaService = require('../services/reserva.service');
+const notificacionService = require('../services/notificacion.service');
 
 async function listar(req, res) {
   try {
@@ -25,6 +26,17 @@ async function obtenerPorId(req, res) {
   } catch (error) {
     res.status(500).json({
       mensaje: 'Error al obtener reserva'
+    });
+  }
+}
+
+async function metricas(req, res) {
+  try {
+    const metricasReserva = await reservaService.obtenerMetricas();
+    res.json(metricasReserva);
+  } catch (error) {
+    res.status(500).json({
+      mensaje: 'Error al obtener metricas'
     });
   }
 }
@@ -60,7 +72,7 @@ async function actualizar(req, res) {
 
 async function cancelar(req, res) {
   try {
-    const reservaCancelada = await reservaService.cancelarReserva(req.params.id);
+    const reservaCancelada = await reservaService.cancelarReserva(req.params.id, req.body.motivo);
 
     if (!reservaCancelada) {
       return res.status(404).json({
@@ -68,9 +80,48 @@ async function cancelar(req, res) {
       });
     }
 
+    await notificacionService.notificarCancelacion(reservaCancelada);
+
     res.json({
-      mensaje: 'Reserva cancelada correctamente'
+      mensaje: 'Reserva cancelada correctamente',
+      reserva: reservaCancelada
     });
+  } catch (error) {
+    res.status(400).json({
+      mensaje: error.message
+    });
+  }
+}
+
+async function marcarAsistioYPago(req, res) {
+  try {
+    const reserva = await reservaService.marcarAsistioYPago(req.params.id);
+
+    if (!reserva) {
+      return res.status(404).json({
+        mensaje: 'Reserva no encontrada'
+      });
+    }
+
+    res.json(reserva);
+  } catch (error) {
+    res.status(400).json({
+      mensaje: error.message
+    });
+  }
+}
+
+async function marcarNoLlego(req, res) {
+  try {
+    const reserva = await reservaService.marcarNoLlego(req.params.id);
+
+    if (!reserva) {
+      return res.status(404).json({
+        mensaje: 'Reserva no encontrada'
+      });
+    }
+
+    res.json(reserva);
   } catch (error) {
     res.status(400).json({
       mensaje: error.message
@@ -81,7 +132,10 @@ async function cancelar(req, res) {
 module.exports = {
   listar,
   obtenerPorId,
+  metricas,
   crear,
   actualizar,
-  cancelar
+  cancelar,
+  marcarAsistioYPago,
+  marcarNoLlego
 };

@@ -127,6 +127,22 @@ async function cerrar() {
   return obtenerEstado();
 }
 
+async function enviarMensaje(telefono, texto) {
+  if (!clienteWhatsapp || estado !== 'conectado') {
+    console.log(`WhatsApp no conectado. Mensaje para ${telefono}: ${texto}`);
+    return false;
+  }
+
+  const chatId = prepararChatId(telefono);
+  await clienteWhatsapp.sendMessage(chatId, texto);
+  return true;
+}
+
+function prepararChatId(telefono) {
+  const telefonoLimpio = String(telefono).replace(/\D/g, '');
+  return `${telefonoLimpio}@c.us`;
+}
+
 function obtenerEstado() {
   return {
     estado,
@@ -138,5 +154,6 @@ function obtenerEstado() {
 module.exports = {
   iniciar,
   cerrar,
+  enviarMensaje,
   obtenerEstado
 };

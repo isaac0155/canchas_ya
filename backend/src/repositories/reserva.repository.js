@@ -10,6 +10,9 @@ async function listar(filtros) {
       r.estado,
       r.origen,
       r.recordatorio_enviado,
+      r.cancelacion_motivo,
+      r.resultado,
+      r.fecha_resultado,
       r.fecha_creacion,
       r.cliente_id,
       cl.nombre AS cliente,
@@ -58,6 +61,9 @@ async function obtenerPorId(id) {
       r.estado,
       r.origen,
       r.recordatorio_enviado,
+      r.cancelacion_motivo,
+      r.resultado,
+      r.fecha_resultado,
       r.fecha_creacion,
       r.cliente_id,
       cl.nombre AS cliente,
@@ -107,8 +113,8 @@ async function buscarCruceDeHorario(reservaId, reserva) {
 async function crear(reserva) {
   const [result] = await pool.query(
     `INSERT INTO reserva
-      (cliente_id, cancha_id, fecha_reserva, hora_inicio, hora_fin, estado, origen, recordatorio_enviado)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      (cliente_id, cancha_id, fecha_reserva, hora_inicio, hora_fin, estado, origen, recordatorio_enviado, resultado)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       reserva.cliente_id,
       reserva.cancha_id,
@@ -117,7 +123,8 @@ async function crear(reserva) {
       reserva.hora_fin,
       reserva.estado,
       reserva.origen,
-      reserva.recordatorio_enviado
+      reserva.recordatorio_enviado,
+      reserva.resultado
     ]
   );
 
@@ -134,7 +141,8 @@ async function actualizar(id, reserva) {
       hora_fin = ?,
       estado = ?,
       origen = ?,
-      recordatorio_enviado = ?
+      recordatorio_enviado = ?,
+      resultado = ?
     WHERE id = ?`,
     [
       reserva.cliente_id,
@@ -145,6 +153,7 @@ async function actualizar(id, reserva) {
       reserva.estado,
       reserva.origen,
       reserva.recordatorio_enviado,
+      reserva.resultado,
       id
     ]
   );
@@ -157,11 +166,35 @@ async function cambiarEstado(id, estado) {
   );
 }
 
+async function cancelar(id, motivo) {
+  await pool.query(
+    `UPDATE reserva
+    SET estado = ?,
+      cancelacion_motivo = ?,
+      resultado = ?
+    WHERE id = ?`,
+    ['cancelada', motivo, 'sin_marcar', id]
+  );
+}
+
+async function marcarResultado(id, resultado) {
+  await pool.query(
+    `UPDATE reserva
+    SET resultado = ?,
+      estado = ?,
+      fecha_resultado = NOW()
+    WHERE id = ?`,
+    [resultado, 'finalizada', id]
+  );
+}
+
 module.exports = {
   listar,
   obtenerPorId,
   buscarCruceDeHorario,
   crear,
   actualizar,
-  cambiarEstado
+  cambiarEstado,
+  cancelar,
+  marcarResultado
 };
