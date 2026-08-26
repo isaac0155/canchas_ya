@@ -1,191 +1,109 @@
-const { pool } = require('../config/database');
+const { dataSource } = require('../config/typeorm');
+
+function repositorio() {
+  return dataSource.getRepository('Reserva');
+}
+
+function consultaBase() {
+  return repositorio()
+    .createQueryBuilder('reserva')
+    .innerJoin('cliente', 'cliente', 'cliente.id = reserva.cliente_id')
+    .innerJoin('cancha', 'cancha', 'cancha.id = reserva.cancha_id')
+    .innerJoin('tipo_cancha', 'tipo', 'tipo.id = cancha.tipo_cancha_id')
+    .select([
+      'reserva.id AS id',
+      'DATE_FORMAT(reserva.fecha_reserva, "%Y-%m-%d") AS fecha_reserva',
+      'reserva.hora_inicio AS hora_inicio',
+      'reserva.hora_fin AS hora_fin',
+      'reserva.estado AS estado',
+      'reserva.origen AS origen',
+      'reserva.recordatorio_enviado AS recordatorio_enviado',
+      'reserva.cancelacion_motivo AS cancelacion_motivo',
+      'reserva.resultado AS resultado',
+      'reserva.fecha_resultado AS fecha_resultado',
+      'reserva.fecha_creacion AS fecha_creacion',
+      'reserva.cliente_id AS cliente_id',
+      'cliente.nombre AS cliente',
+      'cliente.telefono AS telefono_cliente',
+      'reserva.cancha_id AS cancha_id',
+      'cancha.nombre AS cancha',
+      'cancha.precio_por_hora AS precio_por_hora',
+      'tipo.nombre AS tipo_cancha'
+    ]);
+}
 
 async function listar(filtros) {
-  let sql = `
-    SELECT
-      r.id,
-      DATE_FORMAT(r.fecha_reserva, '%Y-%m-%d') AS fecha_reserva,
-      r.hora_inicio,
-      r.hora_fin,
-      r.estado,
-      r.origen,
-      r.recordatorio_enviado,
-      r.cancelacion_motivo,
-      r.resultado,
-      r.fecha_resultado,
-      r.fecha_creacion,
-      r.cliente_id,
-      cl.nombre AS cliente,
-      cl.telefono AS telefono_cliente,
-      r.cancha_id,
-      ca.nombre AS cancha,
-      ca.precio_por_hora,
-      tc.nombre AS tipo_cancha
-    FROM reserva r
-    INNER JOIN cliente cl ON cl.id = r.cliente_id
-    INNER JOIN cancha ca ON ca.id = r.cancha_id
-    INNER JOIN tipo_cancha tc ON tc.id = ca.tipo_cancha_id
-    WHERE 1 = 1
-  `;
-
-  const valores = [];
+  const consulta = consultaBase();
 
   if (filtros.fecha_reserva) {
-    sql += ' AND r.fecha_reserva = ?';
-    valores.push(filtros.fecha_reserva);
+    consulta.andWhere('reserva.fecha_reserva = :fecha', { fecha: filtros.fecha_reserva });
   }
 
   if (filtros.cancha_id) {
-    sql += ' AND r.cancha_id = ?';
-    valores.push(filtros.cancha_id);
+    consulta.andWhere('reserva.cancha_id = :canchaId', { canchaId: Number(filtros.cancha_id) });
   }
 
   if (filtros.estado) {
-    sql += ' AND r.estado = ?';
-    valores.push(filtros.estado);
+    consulta.andWhere('reserva.estado = :estado', { estado: filtros.estado });
   }
 
-  sql += ' ORDER BY r.fecha_reserva, r.hora_inicio';
-
-  const [rows] = await pool.query(sql, valores);
-  return rows;
+  return consulta
+    .orderBy('reserva.fecha_reserva', 'ASC')
+    .addOrderBy('reserva.hora_inicio', 'ASC')
+    .getRawMany();
 }
 
 async function obtenerPorId(id) {
-  const [rows] = await pool.query(
-    `SELECT
-      r.id,
-      DATE_FORMAT(r.fecha_reserva, '%Y-%m-%d') AS fecha_reserva,
-      r.hora_inicio,
-      r.hora_fin,
-      r.estado,
-      r.origen,
-      r.recordatorio_enviado,
-      r.cancelacion_motivo,
-      r.resultado,
-      r.fecha_resultado,
-      r.fecha_creacion,
-      r.cliente_id,
-      cl.nombre AS cliente,
-      cl.telefono AS telefono_cliente,
-      r.cancha_id,
-      ca.nombre AS cancha,
-      ca.precio_por_hora,
-      tc.nombre AS tipo_cancha
-    FROM reserva r
-    INNER JOIN cliente cl ON cl.id = r.cliente_id
-    INNER JOIN cancha ca ON ca.id = r.cancha_id
-    INNER JOIN tipo_cancha tc ON tc.id = ca.tipo_cancha_id
-    WHERE r.id = ?`,
-    [id]
-  );
-
-  return rows[0];
+  return consultaBase()
+    .where('reserva.id = :id', { id: Number(id) })
+    .getRawOne();
 }
 
 async function buscarCruceDeHorario(reservaId, reserva) {
-  let sql = `
-    SELECT id
-    FROM reserva
-    WHERE cancha_id = ?
-      AND fecha_reserva = ?
-      AND estado IN ('pendiente', 'confirmada')
-      AND hora_inicio < ?
-      AND hora_fin > ?
-  `;
-
-  const valores = [
-    reserva.cancha_id,
-    reserva.fecha_reserva,
-    reserva.hora_fin,
-    reserva.hora_inicio
-  ];
+  const consulta = repositorio()
+    .createQueryBuilder('reserva')
+    .select('reserva.id', 'id')
+    .where('reserva.cancha_id = :canchaId', { canchaId: reserva.cancha_id })
+    .andWhere('reserva.fecha_reserva = :fecha', { fecha: reserva.fecha_reserva })
+    .andWhere('reserva.estado IN (:...estados)', { estados: ['pendiente', 'confirmada'] })
+    .andWhere('reserva.hora_inicio < :horaFin', { horaFin: reserva.hora_fin })
+    .andWhere('reserva.hora_fin > :horaInicio', { horaInicio: reserva.hora_inicio });
 
   if (reservaId) {
-    sql += ' AND id <> ?';
-    valores.push(reservaId);
+    consulta.andWhere('reserva.id <> :id', { id: Number(reservaId) });
   }
 
-  const [rows] = await pool.query(sql, valores);
-  return rows[0];
+  return consulta.getRawOne();
 }
 
 async function crear(reserva) {
-  const [result] = await pool.query(
-    `INSERT INTO reserva
-      (cliente_id, cancha_id, fecha_reserva, hora_inicio, hora_fin, estado, origen, recordatorio_enviado, resultado)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      reserva.cliente_id,
-      reserva.cancha_id,
-      reserva.fecha_reserva,
-      reserva.hora_inicio,
-      reserva.hora_fin,
-      reserva.estado,
-      reserva.origen,
-      reserva.recordatorio_enviado,
-      reserva.resultado
-    ]
-  );
-
-  return result.insertId;
+  const nuevaReserva = repositorio().create(reserva);
+  const guardada = await repositorio().save(nuevaReserva);
+  return guardada.id;
 }
 
 async function actualizar(id, reserva) {
-  await pool.query(
-    `UPDATE reserva
-    SET cliente_id = ?,
-      cancha_id = ?,
-      fecha_reserva = ?,
-      hora_inicio = ?,
-      hora_fin = ?,
-      estado = ?,
-      origen = ?,
-      recordatorio_enviado = ?,
-      resultado = ?
-    WHERE id = ?`,
-    [
-      reserva.cliente_id,
-      reserva.cancha_id,
-      reserva.fecha_reserva,
-      reserva.hora_inicio,
-      reserva.hora_fin,
-      reserva.estado,
-      reserva.origen,
-      reserva.recordatorio_enviado,
-      reserva.resultado,
-      id
-    ]
-  );
+  await repositorio().update(Number(id), reserva);
 }
 
 async function cambiarEstado(id, estado) {
-  await pool.query(
-    'UPDATE reserva SET estado = ? WHERE id = ?',
-    [estado, id]
-  );
+  await repositorio().update(Number(id), { estado });
 }
 
 async function cancelar(id, motivo) {
-  await pool.query(
-    `UPDATE reserva
-    SET estado = ?,
-      cancelacion_motivo = ?,
-      resultado = ?
-    WHERE id = ?`,
-    ['cancelada', motivo, 'sin_marcar', id]
-  );
+  await repositorio().update(Number(id), {
+    estado: 'cancelada',
+    cancelacion_motivo: motivo,
+    resultado: 'sin_marcar'
+  });
 }
 
 async function marcarResultado(id, resultado) {
-  await pool.query(
-    `UPDATE reserva
-    SET resultado = ?,
-      estado = ?,
-      fecha_resultado = NOW()
-    WHERE id = ?`,
-    [resultado, 'finalizada', id]
-  );
+  await repositorio().update(Number(id), {
+    resultado,
+    estado: 'finalizada',
+    fecha_resultado: new Date()
+  });
 }
 
 module.exports = {

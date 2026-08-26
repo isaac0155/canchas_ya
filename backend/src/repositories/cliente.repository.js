@@ -1,66 +1,36 @@
-const { pool } = require('../config/database');
+const { dataSource } = require('../config/typeorm');
+
+function repositorio() {
+  return dataSource.getRepository('Cliente');
+}
 
 async function listarActivos() {
-  const [rows] = await pool.query(
-    `SELECT id, nombre, telefono, estado, fecha_registro
-    FROM cliente
-    WHERE estado = ?
-    ORDER BY nombre`,
-    ['activo']
-  );
-
-  return rows;
+  return repositorio().find({
+    where: { estado: 'activo' },
+    order: { nombre: 'ASC' }
+  });
 }
 
 async function obtenerPorId(id) {
-  const [rows] = await pool.query(
-    `SELECT id, nombre, telefono, estado, fecha_registro
-    FROM cliente
-    WHERE id = ?`,
-    [id]
-  );
-
-  return rows[0];
+  return repositorio().findOneBy({ id: Number(id) });
 }
 
 async function obtenerPorTelefono(telefono) {
-  const [rows] = await pool.query(
-    `SELECT id, nombre, telefono, estado, fecha_registro
-    FROM cliente
-    WHERE telefono = ?`,
-    [telefono]
-  );
-
-  return rows[0];
+  return repositorio().findOneBy({ telefono });
 }
 
 async function crear(cliente) {
-  const [result] = await pool.query(
-    `INSERT INTO cliente
-      (nombre, telefono, estado)
-    VALUES (?, ?, ?)`,
-    [cliente.nombre, cliente.telefono, cliente.estado]
-  );
-
-  return result.insertId;
+  const nuevoCliente = repositorio().create(cliente);
+  const guardado = await repositorio().save(nuevoCliente);
+  return guardado.id;
 }
 
 async function actualizar(id, cliente) {
-  await pool.query(
-    `UPDATE cliente
-    SET nombre = ?,
-      telefono = ?,
-      estado = ?
-    WHERE id = ?`,
-    [cliente.nombre, cliente.telefono, cliente.estado, id]
-  );
+  await repositorio().update(Number(id), cliente);
 }
 
 async function desactivar(id) {
-  await pool.query(
-    'UPDATE cliente SET estado = ? WHERE id = ?',
-    ['inactivo', id]
-  );
+  await repositorio().update(Number(id), { estado: 'inactivo' });
 }
 
 module.exports = {

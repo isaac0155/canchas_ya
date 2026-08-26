@@ -1,41 +1,27 @@
-const { pool } = require('../config/database');
+const { dataSource } = require('../config/typeorm');
+
+function repositorio() {
+  return dataSource.getRepository('Administrador');
+}
 
 async function obtenerPorEmail(email) {
-  const [rows] = await pool.query(
-    `SELECT id, nombre, email, password_hash, estado
-    FROM administrador
-    WHERE email = ?`,
-    [email]
-  );
-
-  return rows[0];
+  return repositorio().findOne({
+    where: { email },
+    select: ['id', 'nombre', 'email', 'password_hash', 'estado']
+  });
 }
 
 async function obtenerPorId(id) {
-  const [rows] = await pool.query(
-    `SELECT id, nombre, email, estado
-    FROM administrador
-    WHERE id = ?`,
-    [id]
-  );
-
-  return rows[0];
+  return repositorio().findOne({
+    where: { id: Number(id) },
+    select: ['id', 'nombre', 'email', 'estado']
+  });
 }
 
 async function crear(administrador) {
-  const [result] = await pool.query(
-    `INSERT INTO administrador
-      (nombre, email, password_hash, estado)
-    VALUES (?, ?, ?, ?)`,
-    [
-      administrador.nombre,
-      administrador.email,
-      administrador.password_hash,
-      administrador.estado
-    ]
-  );
-
-  return result.insertId;
+  const nuevoAdministrador = repositorio().create(administrador);
+  const guardado = await repositorio().save(nuevoAdministrador);
+  return guardado.id;
 }
 
 module.exports = {

@@ -1,90 +1,55 @@
-const { pool } = require('../config/database');
+const { dataSource } = require('../config/typeorm');
+
+function repositorio() {
+  return dataSource.getRepository('Cancha');
+}
+
+function consultaConTipo() {
+  return repositorio()
+    .createQueryBuilder('cancha')
+    .innerJoin('tipo_cancha', 'tipo', 'tipo.id = cancha.tipo_cancha_id')
+    .select([
+      'cancha.id AS id',
+      'cancha.nombre AS nombre',
+      'cancha.precio_por_hora AS precio_por_hora',
+      'cancha.estado AS estado',
+      'cancha.tipo_cancha_id AS tipo_cancha_id',
+      'tipo.nombre AS tipo_cancha'
+    ]);
+}
 
 async function listarActivas() {
-  const [rows] = await pool.query(
-    `SELECT
-      c.id,
-      c.nombre,
-      c.precio_por_hora,
-      c.estado,
-      c.tipo_cancha_id,
-      tc.nombre AS tipo_cancha
-    FROM cancha c
-    INNER JOIN tipo_cancha tc ON tc.id = c.tipo_cancha_id
-    WHERE c.estado <> ?
-    ORDER BY c.nombre`,
-    ['inactiva']
-  );
-
-  return rows;
+  return consultaConTipo()
+    .where('cancha.estado <> :estado', { estado: 'inactiva' })
+    .orderBy('cancha.nombre', 'ASC')
+    .getRawMany();
 }
 
 async function obtenerPorId(id) {
-  const [rows] = await pool.query(
-    `SELECT
-      c.id,
-      c.nombre,
-      c.precio_por_hora,
-      c.estado,
-      c.tipo_cancha_id,
-      tc.nombre AS tipo_cancha
-    FROM cancha c
-    INNER JOIN tipo_cancha tc ON tc.id = c.tipo_cancha_id
-    WHERE c.id = ?`,
-    [id]
-  );
-
-  return rows[0];
+  return consultaConTipo()
+    .where('cancha.id = :id', { id: Number(id) })
+    .getRawOne();
 }
 
 async function obtenerPorNombre(nombre) {
-  const [rows] = await pool.query(
-    'SELECT id, nombre, estado FROM cancha WHERE nombre = ?',
-    [nombre]
-  );
-
-  return rows[0];
+  return repositorio().findOne({
+    where: { nombre },
+    select: ['id', 'nombre', 'estado']
+  });
 }
 
 async function crear(cancha) {
-  const [result] = await pool.query(
-    `INSERT INTO cancha
-      (tipo_cancha_id, nombre, precio_por_hora, estado)
-    VALUES (?, ?, ?, ?)`,
-    [
-      cancha.tipo_cancha_id,
-      cancha.nombre,
-      cancha.precio_por_hora,
-      cancha.estado
-    ]
-  );
-
-  return result.insertId;
+  const nuevaCancha = repositorio().create(cancha);
+  const guardada = await repositorio().save(nuevaCancha);
+  return guardada.id;
 }
 
 async function actualizar(id, cancha) {
-  await pool.query(
-    `UPDATE cancha
-    SET tipo_cancha_id = ?,
-      nombre = ?,
-      precio_por_hora = ?,
-      estado = ?
-    WHERE id = ?`,
-    [
-      cancha.tipo_cancha_id,
-      cancha.nombre,
-      cancha.precio_por_hora,
-      cancha.estado,
-      id
-    ]
-  );
+  await repositorio().update(Number(id), cancha);
 }
 
 async function desactivar(id) {
-  await pool.query(
-    'UPDATE cancha SET estado = ? WHERE id = ?',
-    ['inactiva', id]
-  );
+  await repositorio().update(Number(id), { estado: 'inactiva' });
 }
 
 module.exports = {

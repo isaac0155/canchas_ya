@@ -1,53 +1,39 @@
-const { pool } = require('../config/database');
+const { dataSource } = require('../config/typeorm');
+
+function repositorio() {
+  return dataSource.getRepository('TipoCancha');
+}
 
 async function listarActivos() {
-  const [rows] = await pool.query(
-    'SELECT id, nombre, estado FROM tipo_cancha WHERE estado = ? ORDER BY nombre',
-    ['activo']
-  );
-
-  return rows;
+  return repositorio().find({
+    where: { estado: 'activo' },
+    order: { nombre: 'ASC' }
+  });
 }
 
 async function obtenerPorId(id) {
-  const [rows] = await pool.query(
-    'SELECT id, nombre, estado FROM tipo_cancha WHERE id = ?',
-    [id]
-  );
-
-  return rows[0];
+  return repositorio().findOneBy({ id: Number(id) });
 }
 
 async function obtenerPorNombre(nombre) {
-  const [rows] = await pool.query(
-    'SELECT id, nombre, estado FROM tipo_cancha WHERE nombre = ?',
-    [nombre]
-  );
-
-  return rows[0];
+  return repositorio().findOneBy({ nombre });
 }
 
 async function crear(nombre) {
-  const [result] = await pool.query(
-    'INSERT INTO tipo_cancha (nombre) VALUES (?)',
-    [nombre]
-  );
-
-  return result.insertId;
+  const tipoCancha = repositorio().create({
+    nombre,
+    estado: 'activo'
+  });
+  const guardado = await repositorio().save(tipoCancha);
+  return guardado.id;
 }
 
 async function actualizar(id, nombre) {
-  await pool.query(
-    'UPDATE tipo_cancha SET nombre = ? WHERE id = ?',
-    [nombre, id]
-  );
+  await repositorio().update(Number(id), { nombre });
 }
 
 async function desactivar(id) {
-  await pool.query(
-    'UPDATE tipo_cancha SET estado = ? WHERE id = ?',
-    ['inactivo', id]
-  );
+  await repositorio().update(Number(id), { estado: 'inactivo' });
 }
 
 module.exports = {

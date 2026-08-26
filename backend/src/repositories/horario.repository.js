@@ -1,72 +1,68 @@
-const { pool } = require('../config/database');
+const { dataSource } = require('../config/typeorm');
+
+function repositorioHorario() {
+  return dataSource.getRepository('HorarioAtencion');
+}
+
+function repositorioFecha() {
+  return dataSource.getRepository('FechaBloqueada');
+}
 
 async function listarHorarios() {
-  const [rows] = await pool.query(
-    `SELECT id, dia_semana, atiende, hora_inicio, hora_fin
-    FROM horario_atencion
-    ORDER BY dia_semana`
-  );
-
-  return rows;
+  return repositorioHorario().find({
+    order: { dia_semana: 'ASC' }
+  });
 }
 
 async function obtenerPorDia(diaSemana) {
-  const [rows] = await pool.query(
-    `SELECT id, dia_semana, atiende, hora_inicio, hora_fin
-    FROM horario_atencion
-    WHERE dia_semana = ?`,
-    [diaSemana]
-  );
-
-  return rows[0];
+  return repositorioHorario().findOneBy({ dia_semana: Number(diaSemana) });
 }
 
 async function actualizarHorario(diaSemana, horario) {
-  await pool.query(
-    `UPDATE horario_atencion
-    SET atiende = ?,
-      hora_inicio = ?,
-      hora_fin = ?
-    WHERE dia_semana = ?`,
-    [horario.atiende, horario.hora_inicio, horario.hora_fin, diaSemana]
+  await repositorioHorario().update(
+    { dia_semana: Number(diaSemana) },
+    {
+      atiende: horario.atiende,
+      hora_inicio: horario.hora_inicio,
+      hora_fin: horario.hora_fin
+    }
   );
 }
 
 async function listarFechasBloqueadas() {
-  const [rows] = await pool.query(
-    `SELECT id, DATE_FORMAT(fecha, '%Y-%m-%d') AS fecha, motivo
-    FROM fecha_bloqueada
-    ORDER BY fecha`
-  );
+  const fechas = await repositorioFecha().find({
+    order: { fecha: 'ASC' }
+  });
 
-  return rows;
+  return fechas.map(formatearFechaBloqueada);
 }
 
 async function obtenerFechaBloqueada(fecha) {
-  const [rows] = await pool.query(
-    `SELECT id, DATE_FORMAT(fecha, '%Y-%m-%d') AS fecha, motivo
-    FROM fecha_bloqueada
-    WHERE fecha = ?`,
-    [fecha]
-  );
+  const fechaBloqueada = await repositorioFecha().findOneBy({ fecha });
 
-  return rows[0];
+  if (!fechaBloqueada) {
+    return null;
+  }
+
+  return formatearFechaBloqueada(fechaBloqueada);
 }
 
 async function crearFechaBloqueada(fecha, motivo) {
-  const [result] = await pool.query(
-    'INSERT INTO fecha_bloqueada (fecha, motivo) VALUES (?, ?)',
-    [fecha, motivo]
-  );
-
-  return result.insertId;
+  const nuevaFecha = repositorioFecha().create({ fecha, motivo });
+  const guardada = await repositorioFecha().save(nuevaFecha);
+  return guardada.id;
 }
 
 async function eliminarFechaBloqueada(id) {
-  await pool.query(
-    'DELETE FROM fecha_bloqueada WHERE id = ?',
-    [id]
-  );
+  await repositorioFecha().delete(Number(id));
+}
+
+function formatearFechaBloqueada(fechaBloqueada) {
+  return {
+    id: fechaBloqueada.id,
+    fecha: String(fechaBloqueada.fecha).slice(0, 10),
+    motivo: fechaBloqueada.motivo
+  };
 }
 
 module.exports = {

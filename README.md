@@ -24,7 +24,7 @@ CanchaYa/
 ## Arquitectura
 
 ```text
-React SPA -> Express API -> Servicios -> Repositorios -> MySQL
+React SPA -> Express API -> Servicios -> Repositorios -> TypeORM -> MySQL
 ```
 
 ## Configuracion
