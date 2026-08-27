@@ -10,6 +10,8 @@ El cliente solicita reservas por WhatsApp y el administrador gestiona todo desde
 - Backend: Node.js, Express
 - Base de datos: MySQL
 - ORM: TypeORM
+- Seguridad: JWT, cookies HTTP-only, Helmet, CORS y rate limiting
+- Documentacion: Swagger
 - Comunicacion: API REST con JSON
 
 ## Estructura
@@ -103,6 +105,7 @@ URLs:
 ```text
 Frontend: http://localhost:5173
 Backend:  http://localhost:3001
+Swagger:  http://localhost:3001/docs
 ```
 
 ## Funciones principales
@@ -119,3 +122,5 @@ Backend:  http://localhost:3001
 - Recordatorios
 - Integracion con WhatsApp
 - Apoyo con Gemini para interpretar mensajes
+- Validaciones de datos en rutas principales
+- Documentacion Swagger

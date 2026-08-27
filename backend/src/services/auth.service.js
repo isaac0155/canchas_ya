@@ -21,11 +21,12 @@ async function login(datos) {
   const datosAdmin = {
     id: administrador.id,
     nombre: administrador.nombre,
-    email: administrador.email
+    email: administrador.email,
+    rol: 'admin'
   };
 
   const token = jwt.sign(datosAdmin, env.jwtSecret, {
-    expiresIn: '1d'
+    expiresIn: env.jwtExpiresIn
   });
 
   return {

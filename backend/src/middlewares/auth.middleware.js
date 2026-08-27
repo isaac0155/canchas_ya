@@ -22,6 +22,7 @@ async function verificarAdmin(req, res, next) {
     }
 
     req.administrador = administrador;
+    req.administrador.rol = 'admin';
     next();
   } catch (error) {
     res.status(401).json({
@@ -30,6 +31,19 @@ async function verificarAdmin(req, res, next) {
   }
 }
 
+function verificarRol(...rolesPermitidos) {
+  return (req, res, next) => {
+    if (!req.administrador || !rolesPermitidos.includes(req.administrador.rol)) {
+      return res.status(403).json({
+        mensaje: 'No autorizado'
+      });
+    }
+
+    next();
+  };
+}
+
 module.exports = {
-  verificarAdmin
+  verificarAdmin,
+  verificarRol
 };
