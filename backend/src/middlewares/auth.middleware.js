@@ -4,7 +4,7 @@ const administradorRepository = require('../repositories/administrador.repositor
 
 async function verificarAdmin(req, res, next) {
   try {
-    const token = req.cookies.token_admin;
+    const token = obtenerToken(req);
 
     if (!token) {
       return res.status(401).json({
@@ -29,6 +29,20 @@ async function verificarAdmin(req, res, next) {
       mensaje: 'No autenticado'
     });
   }
+}
+
+function obtenerToken(req) {
+  if (req.cookies.token_admin) {
+    return req.cookies.token_admin;
+  }
+
+  const authorization = req.headers.authorization;
+
+  if (authorization && authorization.startsWith('Bearer ')) {
+    return authorization.replace('Bearer ', '').trim();
+  }
+
+  return null;
 }
 
 function verificarRol(...rolesPermitidos) {

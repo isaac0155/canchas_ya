@@ -12,7 +12,8 @@ async function login(req, res) {
 
     res.json({
       mensaje: 'Login correcto',
-      administrador: resultado.administrador
+      administrador: resultado.administrador,
+      token: resultado.token
     });
   } catch (error) {
     res.status(401).json({

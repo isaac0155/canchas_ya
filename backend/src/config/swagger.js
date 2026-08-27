@@ -105,6 +105,11 @@ const swaggerSpec = swaggerJsdoc({
     servers: [{ url: 'http://localhost:3001/api' }],
     components: {
       securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT'
+        },
         cookieAuth: {
           type: 'apiKey',
           in: 'cookie',
@@ -113,7 +118,10 @@ const swaggerSpec = swaggerJsdoc({
       },
       schemas
     },
-    security: [{ cookieAuth: [] }],
+    security: [
+      { bearerAuth: [] },
+      { cookieAuth: [] }
+    ],
     paths: {
       '/salud': {
         get: {
