@@ -7,7 +7,7 @@ function repositorio() {
 function consultaConTipo() {
   return repositorio()
     .createQueryBuilder('cancha')
-    .innerJoin('tipo_cancha', 'tipo', 'tipo.id = cancha.tipo_cancha_id')
+    .innerJoin('cancha.tipoCancha', 'tipo')
     .select([
       'cancha.id AS id',
       'cancha.nombre AS nombre',

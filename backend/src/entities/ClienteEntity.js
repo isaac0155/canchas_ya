@@ -9,5 +9,12 @@ module.exports = new EntitySchema({
     telefono: { type: String },
     estado: { type: String },
     fecha_registro: { type: 'datetime' }
+  },
+  relations: {
+    reservas: {
+      type: 'one-to-many',
+      target: 'Reserva',
+      inverseSide: 'cliente'
+    }
   }
 });

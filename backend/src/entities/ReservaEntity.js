@@ -47,5 +47,25 @@ module.exports = new EntitySchema({
     fecha_creacion: {
       type: 'datetime'
     }
+  },
+  relations: {
+    cliente: {
+      type: 'many-to-one',
+      target: 'Cliente',
+      inverseSide: 'reservas',
+      joinColumn: {
+        name: 'cliente_id'
+      },
+      createForeignKeyConstraints: true
+    },
+    cancha: {
+      type: 'many-to-one',
+      target: 'Cancha',
+      inverseSide: 'reservas',
+      joinColumn: {
+        name: 'cancha_id'
+      },
+      createForeignKeyConstraints: true
+    }
   }
 });

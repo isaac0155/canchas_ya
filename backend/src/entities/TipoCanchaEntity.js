@@ -8,5 +8,12 @@ module.exports = new EntitySchema({
     nombre: { type: String },
     estado: { type: String },
     fecha_creacion: { type: 'datetime' }
+  },
+  relations: {
+    canchas: {
+      type: 'one-to-many',
+      target: 'Cancha',
+      inverseSide: 'tipoCancha'
+    }
   }
 });

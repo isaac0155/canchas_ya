@@ -7,8 +7,8 @@ function repositorioReserva() {
 async function listarPendientes() {
   return repositorioReserva()
     .createQueryBuilder('reserva')
-    .innerJoin('cliente', 'cliente', 'cliente.id = reserva.cliente_id')
-    .innerJoin('cancha', 'cancha', 'cancha.id = reserva.cancha_id')
+    .innerJoin('reserva.cliente', 'cliente')
+    .innerJoin('reserva.cancha', 'cancha')
     .select([
       'reserva.id AS id',
       'DATE_FORMAT(reserva.fecha_reserva, "%Y-%m-%d") AS fecha_reserva',

@@ -10,5 +10,21 @@ module.exports = new EntitySchema({
     precio_por_hora: { type: 'decimal', precision: 10, scale: 2 },
     estado: { type: String },
     fecha_creacion: { type: 'datetime' }
+  },
+  relations: {
+    tipoCancha: {
+      type: 'many-to-one',
+      target: 'TipoCancha',
+      inverseSide: 'canchas',
+      joinColumn: {
+        name: 'tipo_cancha_id'
+      },
+      createForeignKeyConstraints: true
+    },
+    reservas: {
+      type: 'one-to-many',
+      target: 'Reserva',
+      inverseSide: 'cancha'
+    }
   }
 });

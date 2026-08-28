@@ -7,9 +7,9 @@ function repositorio() {
 function consultaBase() {
   return repositorio()
     .createQueryBuilder('reserva')
-    .innerJoin('cliente', 'cliente', 'cliente.id = reserva.cliente_id')
-    .innerJoin('cancha', 'cancha', 'cancha.id = reserva.cancha_id')
-    .innerJoin('tipo_cancha', 'tipo', 'tipo.id = cancha.tipo_cancha_id')
+    .innerJoin('reserva.cliente', 'cliente')
+    .innerJoin('reserva.cancha', 'cancha')
+    .innerJoin('cancha.tipoCancha', 'tipo')
     .select([
       'reserva.id AS id',
       'DATE_FORMAT(reserva.fecha_reserva, "%Y-%m-%d") AS fecha_reserva',
